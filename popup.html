@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>Post quote to Twitter</title>
+    <style>
+      body { font: 9pt Verdana; color: WindowText; background-color: Window; }
+
+      #message { margin-bottom: 1em; border-radius: 5px; padding: .5em 1em; }
+      #message.progress { background-color: #c0c0ff; }
+      #message.info     { background-color: #c0ffc0; }
+      #message.error    { background-color: orange;  }
+
+      table { border-spacing: 0; }
+      table td, table th { padding: .5em 1em; }
+      table td:first-child, table th:first-child { padding-left:  0; }
+      table td:last-child,  table th:last-child  { padding-right: 0; }
+      table th { text-align: left; font-weight: normal; }
+      table td.button { text-align: right; }
+
+      #url { display: block; max-width: 25em; overflow: hidden; }
+      #twitter-username { width: 15em; }
+      #twitter-password { width: 15em; }
+      #tweet-text { width: 35em; height: 10em; }
+    </style>
+  </head>
+  <body>
+    <div id="message"></div>
+
+    <table>
+      <tr>
+        <th><label for="url">URL:</label></th>
+        <td><a id="url"></a></td>
+      </tr>
+      <tr>
+        <th><label for="twitter-username">Twitter user name:</label></th>
+        <td><input type="text" id="twitter-username" disabled></textarea></td>
+      </tr>
+      <tr>
+        <th><label for="twitter-password">Twitter password:</label></th>
+        <td><input type="password" id="twitter-password" disabled></textarea></td>
+      </tr>
+      <tr>
+        <td colspan="2">
+          <label for="tweet-text">Tweet text:</label><br>
+          <textarea id="tweet-text" disabled></textarea>
+        </td>
+      </tr>
+      <tr>
+        <td colspan="2" class="button">
+          <button id="send-button" disabled>Send</button>
+        </td>
+      </tr>
+    </table>
+
+    <script src="jquery.js"></script>
+    <script>
+      var message = {
+        progress: function(message) { $("#message").attr("class", "progress").text(message); },
+        info:     function(message) { $("#message").attr("class", "info"    ).text(message); },
+        error:    function(message) { $("#message").attr("class", "error"   ).text(message); },
+      };
+
+      $(document).ready(function() {
+        $("#twitter-username").val(localStorage.twitterUsername);
+        $("#twitter-password").val(localStorage.twitterPassword);
+
+        chrome.tabs.getSelected(null, function(tab) {
+          message.progress("Requesting selection...");
+
+          var timer = setTimeout(function() {
+            message.error("Requesting selection failed – are you on a web page?");
+          }, 5000);
+
+          chrome.tabs.sendRequest(tab.id, {}, function(response) {
+            clearTimeout(timer);
+
+            $("#url").attr("href", response.url).text(response.url);
+
+            if (response.selection.length === 0) {
+              message.error("No text selected.");
+              return;
+            }
+
+            message.progress("Shortening URL...");
+
+            $.ajax({
+              type:      "GET",
+              url:       "http://api.bit.ly/shorten",
+              data:      {
+                version: "2.0.1",
+                longUrl: response.url,
+                login:   "quoter",
+                apiKey:  "R_9ed14902f74d311b3f87a3c80f56850e",
+              },
+              dataType:  "json",
+              success:   function(data, textStatus, xhr) {
+                if (xhr.status !== 200) {
+                  message.error("Error shortening URL (HTTP status " + xhr.status + ").");
+                  return;
+                }
+
+                if (data.statusCode !== "OK") {
+                  message.error("Error shortening URL: " + data.errorMessage);
+                  return;
+                }
+
+                $("#twitter-username").removeAttr("disabled");
+                $("#twitter-password").removeAttr("disabled");
+                $("#tweet-text").removeAttr("disabled");
+                $("#send-button").removeAttr("disabled");
+
+                var shortUrl = data.results[response.url].shortUrl;
+                var excreptMaxLength = 140 - shortUrl.length - 6;
+                var excrept = response.selection.length > excreptMaxLength
+                  ? response.selection.substr(0, excreptMaxLength - 3) + "..."
+                  : response.selection;
+
+                $("#tweet-text").val('"' + excrept + '"' + " — " + shortUrl).focus();
+
+                message.info('Enter your credentials, check your tweet and click "Send".');
+              },
+              error:     function() {
+                message.error("Error shortening URL.");
+              },
+            });
+          });
+        });
+      });
+
+      $("#send-button").click(function() {
+        localStorage.twitterUsername = $("#twitter-username").val();
+        localStorage.twitterPassword = $("#twitter-password").val();
+
+        message.progress("Sending tweet...");
+
+        $.ajax({
+          type:     "POST",
+          url:      "http://twitter.com/statuses/update.json",
+          data:     { status: $("#tweet-text").val() },
+          username: $("#twitter-username").val(),
+          password: $("#twitter-password").val(),
+          dataType: "json",
+          success:  function(data, textStatus, xhr) {
+            if (xhr.status !== 200) {
+              message.error("Error sending tweet (HTTP status " + xhr.status + ").");
+              return;
+            }
+
+            message.info("Tweet sent successfully.");
+          },
+          error:    function() {
+            message.error("Error sending tweet.");
+          },
+        });
+      });
+    </script>
+  </body>
+</html>

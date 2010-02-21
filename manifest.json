@@ -1,0 +1,26 @@
+{
+  "name": "Quoter",
+  "version": "1.0",
+  "decription": "Posts quotes from web pages to Twitter.",
+  "icons": {
+    "48": "img/icon-48x48.png",
+    "128": "img/icon-128x128.png"
+  },
+  "browser_action": {
+    "default_icon": "img/icon-19x19.png",
+    "default_title": "Post quote to Twitter",
+    "popup": "popup.html"
+  },
+  "content_scripts": [
+    {
+      "matches": ["http://*/*", "https://*/*"],
+      "js": ["content-script.js"],
+      "all_frames": true
+    }
+  ],
+  "permissions": [
+    "tabs",
+    "http://api.bit.ly/",
+    "http://twitter.com/"
+  ]
+}

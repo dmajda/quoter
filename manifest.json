@@ -1,6 +1,6 @@
 {
   "name": "Quoter",
-  "version": "1.0",
+  "version": "1.0.1",
   "decription": "Posts quotes from web pages to Twitter.",
   "icons": {
     "48": "img/icon-48x48.png",

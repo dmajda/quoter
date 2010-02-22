@@ -1,0 +1,10 @@
+1.0.1 (2010-02-22)
+------------------
+* Do not inject the content script into all frames. This fixes buggy behavior on
+  some sites (mostly ithose with ads in <iframe>s), but as a result the
+  extension does not work on sites with regular content in frames (such as
+  JavaDoc-generated documentation).
+
+1.0 (2010-02-21)
+----------------
+* Initial release
